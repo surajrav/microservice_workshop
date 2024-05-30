@@ -1,0 +1,58 @@
+services:
+  mongodb:
+    image: mongo
+    ports:
+      - 27017:27017
+    environment:
+      - MONGO_INITDB_DATABASE=user
+    volumes:
+      - /data/db
+      - ./backend/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+  user:
+    build: ./backend/app/user
+    volumes:
+      - ./backend/app/user:/code/app
+    environment:
+      - PROXY_PREFIX_PATH=/api/v1/users
+      - DB_NAME=user
+      - DB_HOST=mongodb
+      - DB_USER=dev_user
+      - DB_PASS=dev_pass
+      - DB_COLLECTION_NAME=users
+    ports:
+      - 8080:80
+    depends_on:
+      - mongodb
+  todo:
+    build: ./backend/app/todo
+    volumes:
+      - ./backend/app/todo:/code/app
+    environment:
+      - PROXY_PREFIX_PATH=/api/v1/todos
+      - DB_NAME=todo
+      - DB_HOST=mongodb
+      - DB_USER=dev_user
+      - DB_PASS=dev_pass
+      - DB_COLLECTION_NAME=todos
+    ports:
+      - 8081:80
+    depends_on:
+      - mongodb
+  api_gateway:
+    image: nginx:latest
+    volumes:
+      - ./backend/nginx_templates:/etc/nginx/templates
+      - ./frontend:/usr/share/nginx/html
+    ports:
+      - 80:80
+    environment:
+      - NGINX_HOST=localhost
+      - NGINX_PORT=80
+      - USER_API_HOST=user
+      - USER_API_PREFIX_PATH=/api/v1/users
+      - TODO_API_HOST=todo
+      - TODO_API_PREFIX_PATH=/api/v1/todos
+      - API_PORT=80
+    depends_on:
+      - user
+      - todo
